@@ -1,0 +1,879 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title> | pengqq&#39;s blog</title>
+    <meta name="author" content="pengqq" />
+    <meta name="description" content="写代码好累..." />
+    <meta name="keywords" content="" />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <link rel="icon" href="/images/avatar.jpg" />
+    <link rel="preconnect" href="https://s4.zstatic.net" />
+<script src="https://s4.zstatic.net/ajax/libs/vue/3.3.7/vue.global.prod.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.cn" />
+<link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin />
+<link
+    rel="stylesheet"
+    href="https://fonts.googleapis.cn/css2?family=Fira+Code:wght@400;500;600;700&family=Lexend:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap"
+/>
+<script> const mixins = {}; </script>
+
+<script src="https://polyfill.alicdn.com/v3/polyfill.min.js?features=default"></script>
+
+
+<script src="https://s4.zstatic.net/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+<link
+    rel="stylesheet"
+    href="https://s4.zstatic.net/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+/>
+<script src="/js/lib/highlight.js"></script>
+
+
+<script src="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/katex.min.css" />
+<script src="/js/lib/math.js"></script>
+
+
+<script src="/js/lib/preview.js"></script>
+
+
+
+
+
+
+
+<script src="https://s4.zstatic.net/ajax/libs/twikoo/1.6.31/twikoo.all.min.js"></script>
+
+
+
+<link rel="stylesheet" href="/css/main.css" />
+
+    <script src="/js/anime.min.js"></script>
+    <script src="/js/fireworks.js"></script>
+    <script src="/js/sakura.js"></script>
+    <link rel="stylesheet" href="/css/cursor.css" />
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <div id="layout">
+        <transition name="fade">
+            <div id="loading" v-show="loading">
+                <div id="loading-circle">
+                    <h2>LOADING</h2>
+                    <p>加载过慢请开启缓存 浏览器默认开启</p>
+                    <img src="/images/loading.gif" />
+                </div>
+            </div>
+        </transition>
+        <div id="menu" :class="{ hidden: hiddenMenu, 'menu-color': menuColor}">
+    <nav id="desktop-menu">
+        <a class="title" href="/">
+            <span>PENGQQ&#39;S BLOG</span>
+        </a>
+        
+        <a href="/">
+            <i class="fa-solid fa-house fa-fw"></i>
+            <span>&ensp;Home</span>
+        </a>
+        
+        <a href="/about">
+            <i class="fa-solid fa-id-card fa-fw"></i>
+            <span>&ensp;About</span>
+        </a>
+        
+        <a href="/archives">
+            <i class="fa-solid fa-box-archive fa-fw"></i>
+            <span>&ensp;Archives</span>
+        </a>
+        
+        <a href="/categories">
+            <i class="fa-solid fa-bookmark fa-fw"></i>
+            <span>&ensp;Categories</span>
+        </a>
+        
+        <a href="/tags">
+            <i class="fa-solid fa-tags fa-fw"></i>
+            <span>&ensp;Tags</span>
+        </a>
+        
+    </nav>
+    <nav id="mobile-menu">
+        <div class="title" @click="showMenuItems = !showMenuItems">
+            <i class="fa-solid fa-bars fa-fw"></i>
+            <span>&emsp;PENGQQ&#39;S BLOG</span>
+        </div>
+        <transition name="slide">
+            <div class="items" v-show="showMenuItems">
+                
+                <a href="/">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-house fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Home</div>
+                    </div>
+                </a>
+                
+                <a href="/about">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-id-card fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">About</div>
+                    </div>
+                </a>
+                
+                <a href="/archives">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-box-archive fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Archives</div>
+                    </div>
+                </a>
+                
+                <a href="/categories">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-bookmark fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Categories</div>
+                    </div>
+                </a>
+                
+                <a href="/tags">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-tags fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Tags</div>
+                    </div>
+                </a>
+                
+            </div>
+        </transition>
+    </nav>
+</div>
+<transition name="fade">
+    <div id="menu-curtain" @click="showMenuItems = !showMenuItems" v-show="showMenuItems"></div>
+</transition>
+
+        <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
+            <div class="article">
+    <div>
+        <h1></h1>
+    </div>
+    <div class="info">
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2025/3/11
+        </span>
+        
+        
+    </div>
+    
+    <div class="content" v-pre>
+        <h1 id="Golang基础笔记"><a href="#Golang基础笔记" class="headerlink" title="Golang基础笔记"></a>Golang基础笔记</h1><span id="more"></span>
+
+<p>[TOC]</p>
+<h2 id="开发环境"><a href="#开发环境" class="headerlink" title="开发环境"></a>开发环境</h2><h3 id="环境安装"><a href="#环境安装" class="headerlink" title="环境安装"></a>环境安装</h3><p><code>Linux</code>安装：</p>
+<pre><code class="language-shell">
+# 下载指定版本
+wget https://golang.google.cn/dl/go1.21.1.linux-amd64.tar.gz
+
+# 解压到指定目录
+tar -C /usr/local/ -zxvf go1.21.1.linux-amd64.tar.gz
+
+# 配置环境变量 ~/.bashrc or ~/.profile 添加
+export GOROOT=/usr/local/go/bin                                                    export GOPATH=$HOME/go
+export PATH=$PATH:$GOROOT
+
+# 重新加载配置
+source .profile
+
+# 验证
+go version
+</code></pre>
+<p>如果是 <code>Windows</code> 下载安装然后同理配置相关的环境变量即可。</p>
+<p>需要注意的是，可以在 <code>GOPATH</code> 目录下新建三个目录 <code>bin</code> 、<code>src</code>、<code>pkg</code>。</p>
+<pre><code class="language-shell">$ tree -L 1
+.
+├── bin
+├── pkg
+└── src
+</code></pre>
+<p>在老的版本中，<code>Go</code>项目代码需要存放在 <code>src</code>下，不过目前基本上都使用 <code>go mod</code> 进行管理了，就没有这个限制了。</p>
+<h3 id="关于编译"><a href="#关于编译" class="headerlink" title="关于编译"></a>关于编译</h3><p>主要是几个基础命令，详细的构建编译参数可以查看官网。</p>
+<pre><code class="language-shell"># 构建
+go build [-o outFileName]
+
+# 运行 不输出可执行文件
+go run main.go
+
+# 安装 会编译并将代码拷贝到 GOPATH/bin
+go install 
+</code></pre>
+<p>因为<code>Go</code>支持跨平台，大部分代码可以交叉编译：</p>
+<pre><code class="language-shell">SET CGO_ENABLED=0  //禁用CGO
+SET GOOS=Linux     //目标平台是linux
+SET GOARCH=amd     //目标处理架构是amd64
+</code></pre>
+<p>同时可以在代码源文件顶部添加添加相关注释来声明相应文件在什么环境下会被构建，也就是所谓的<strong>编译约束（或者说条件编译）</strong>。</p>
+<pre><code class="language-go">// +build &lt;tag&gt;
+// 逗号分开多个Tag表示 AND
+// 空格分开多个Tag 表示 OR
+// !表示Not
+</code></pre>
+<p>标签支持的内容有大概下面这些：</p>
+<ul>
+<li>操作系统，可以参考环境变量 <code>GOOS</code>，比如：<code>linux</code>、<code>windows</code>、<code>darwin</code>。</li>
+<li>系统架构，可以参考环境变量 <code>GOARCH</code>，比如 <code>arch64</code>、<code>x86</code>。</li>
+<li>使用的编译器：<code>gc</code> 或者 <code>gccgo</code>。</li>
+<li>是否开启 <code>CGO</code>，<code>cgo</code>。</li>
+<li><code>Go</code>版本号，<code>go1.18</code>等。</li>
+<li>忽略编译文件：<code>ignore</code>。</li>
+<li>其他自定义标签。</li>
+</ul>
+<p><strong>需要注意：<code>// +build</code> 下一行必须是空行。</strong></p>
+<p>示例：</p>
+<pre><code class="language-go">// +build linux, arch64, !cgo
+
+// +build linux darwin
+
+// +build amd64
+
+// +build ignore
+</code></pre>
+<p>同时也可以使用文件后缀的方式来自动选择编译文件：</p>
+<pre><code class="language-bash">$filename_$GOOS.go
+$filename_$GOARCH.go
+$filename_$GOOS_$GOARCH.go
+</code></pre>
+<p>通过 <code>ldflags</code> 在编译过程中为变量赋值：</p>
+<pre><code class="language-shell">go build -ldflags &quot;-w -s -X main.Version=$&#123;VERSION&#125; -X github.com/demo/version.BuildNo=$&#123;BUILD_NO&#125;&quot;
+</code></pre>
+<p>参数说明：</p>
+<ul>
+<li><code>-w</code> ：删除 <code>DWARF</code> 信息，编译出来的程序无法使用 <code>gdb</code> 进行调试。</li>
+<li><code>-s</code> ：删除符号表，<code>panic</code> 的 <code>stack trace</code> 没有文件名、行号信息，等价于 <code>C/C++</code> 程序被 <code>strip</code>。</li>
+<li><code>-X</code>：替换包中的变量的值</li>
+</ul>
+<blockquote>
+<p>可以通过 <code>-w -s</code> 有效减少编译出来的本地程序大小，但是不利于调试和日志追踪。</p>
+</blockquote>
+<h2 id="变量基础"><a href="#变量基础" class="headerlink" title="变量基础"></a>变量基础</h2><h3 id="变量"><a href="#变量" class="headerlink" title="变量"></a>变量</h3><p><code>Go</code> 必须先声明变量再使用。声明方式为：</p>
+<pre><code class="language-go">var 变量名 变量类型
+
+// 或者是直接通过类型推导
+var 变量名 = 值
+
+// 或者短变量声明 但是该声明只能用于函数内部
+变量名 := 值
+</code></pre>
+<p>一些简单示例：</p>
+<pre><code class="language-go">var name string
+var isClosed bool
+var age int
+
+// 批量声明
+var (
+	sex int
+	height float64
+)
+
+// 匿名变量 _
+// 不占用命名空间，不分配内存，不存在重复声明。多用于占位，表示忽略值。
+// 可以使用匿名变量检查接口是否被实现
+var _ FileWriter = (*io.Writer)(nil)
+</code></pre>
+<h3 id="常量"><a href="#常量" class="headerlink" title="常量"></a>常量</h3><p>常量在程序运行中恒定不变。使用关键字 <code>const</code> 声明。<code>Go</code>中没有类似 <code>C/C++</code> 的 静态变量 <code>static</code>。</p>
+<pre><code class="language-go">const (
+	HttpStatusOK = 200
+	HttpNotFound = 404
+)
+</code></pre>
+<p>同时提供了常量计数器 <code>iota</code>，其常用于枚举的声明。<code>iota</code> **只能在常量表达式中使用，且在 <code>const</code> 关键字出现时被重置为0 **。</p>
+<pre><code class="language-go">
+// 批量声明常量时某一行未赋值，默认等于上面一行的值
+// 但是可以通过 iota 进行迭代
+const (  
+    Trace = iota // 0  
+    Debug        // 1  
+    Info         // 2  
+    Warn         // 3  
+    Error        // 4  
+    Panic        // 5  
+    Fatal        // 6  
+)
+</code></pre>
+<h3 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h3><p>基础数据类型不多说，看表：</p>
+<table>
+<thead>
+<tr>
+<th align="center">类型</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>int8</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>int16</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>int32</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>int64</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>uint8</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>uint16</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>uint32</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>uint64</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center"><code>uint</code></td>
+<td align="center">操作系统位数对应 <code>uint</code> 位数</td>
+</tr>
+<tr>
+<td align="center"><code>int</code></td>
+<td align="center">操作系统位数对应 <code>int</code> 位数</td>
+</tr>
+<tr>
+<td align="center"><code>uintptr</code></td>
+<td align="center">无符号整型，用于存放指针</td>
+</tr>
+<tr>
+<td align="center"><code>float32</code></td>
+<td align="center">单精度浮点，最大为 <code>math.MaxFloat32</code></td>
+</tr>
+<tr>
+<td align="center"><code>float64</code></td>
+<td align="center">双精度浮点，最大为 <code>math.MaxFloat64</code></td>
+</tr>
+<tr>
+<td align="center"><code>bool</code></td>
+<td align="center">只支持 <code>true</code> 或者 <code>false</code></td>
+</tr>
+<tr>
+<td align="center"><code>string</code></td>
+<td align="center">字符串为原生数据类型，不可修改。使用 <code>&quot;&quot;</code> 包裹</td>
+</tr>
+<tr>
+<td align="center"><code>byte</code></td>
+<td align="center">即 <code>uint8</code>，代表一个 <code>ASCII</code> 字符</td>
+</tr>
+<tr>
+<td align="center"><code>rune</code></td>
+<td align="center">代表一个 <code>utf-8</code> 字符</td>
+</tr>
+</tbody></table>
+<h3 id="运算符"><a href="#运算符" class="headerlink" title="运算符"></a>运算符</h3><p>算术运算符：</p>
+<table>
+<thead>
+<tr>
+<th align="center">运算符</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>+</code></td>
+<td align="center">相加</td>
+</tr>
+<tr>
+<td align="center"><code>-</code></td>
+<td align="center">相减</td>
+</tr>
+<tr>
+<td align="center"><code>*</code></td>
+<td align="center">相乘</td>
+</tr>
+<tr>
+<td align="center"><code>/</code></td>
+<td align="center">相除</td>
+</tr>
+<tr>
+<td align="center"><code>%</code></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">注意：<strong><code>Go</code>中 自增(<code>++</code>)和自减(<code>--</code>)不是运算符而是语句。</strong></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>关系运算符：</p>
+<table>
+<thead>
+<tr>
+<th align="center">运算符</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>==</code></td>
+<td align="center">相等比较，只能比较同类型数据</td>
+</tr>
+<tr>
+<td align="center"><code>!=</code></td>
+<td align="center">不等于</td>
+</tr>
+<tr>
+<td align="center"><code>&gt;=</code></td>
+<td align="center">大于等于</td>
+</tr>
+<tr>
+<td align="center"><code>&lt;=</code></td>
+<td align="center">小于等于</td>
+</tr>
+<tr>
+<td align="center">逻辑运算符，返回一个 <code>bool</code> 类型数据：</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="center">运算符</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>&amp;&amp;</code></td>
+<td align="center">逻辑与</td>
+</tr>
+<tr>
+<td align="center"><code>||</code></td>
+<td align="center">逻辑或</td>
+</tr>
+<tr>
+<td align="center"><code>!</code></td>
+<td align="center">逻辑非</td>
+</tr>
+<tr>
+<td align="center">位运算符：对整数在内存中的二进制进行操作。</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="center">运算符</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>&amp;</code></td>
+<td align="center">按位与，均一为一</td>
+</tr>
+<tr>
+<td align="center"><code>|</code></td>
+<td align="center">按位或，有一为一</td>
+</tr>
+<tr>
+<td align="center"><code>^</code></td>
+<td align="center">按位异或，不同为一</td>
+</tr>
+<tr>
+<td align="center"><code>&gt;&gt;</code></td>
+<td align="center">有移</td>
+</tr>
+<tr>
+<td align="center"><code>&lt;&lt;</code></td>
+<td align="center">左移，高位丢弃，低位补0</td>
+</tr>
+<tr>
+<td align="center">格式化输出占位符：</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="center">占位符</th>
+<th align="center">功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>%v</code></td>
+<td align="center">按原本值输出</td>
+</tr>
+<tr>
+<td align="center"><code>%+v</code></td>
+<td align="center"><code>%v</code>基础上按字段值展开</td>
+</tr>
+<tr>
+<td align="center"><code>%#v</code></td>
+<td align="center">输出<code>Go</code>语法格式的值</td>
+</tr>
+<tr>
+<td align="center"><code>%T</code></td>
+<td align="center">输出<code>Go</code>语法格式的类型和值</td>
+</tr>
+<tr>
+<td align="center"><code>%%</code></td>
+<td align="center">输出<code>%</code></td>
+</tr>
+<tr>
+<td align="center"><code>%b</code></td>
+<td align="center">整型以二进制方式显示</td>
+</tr>
+<tr>
+<td align="center"><code>%o</code></td>
+<td align="center">整型以八进制方式显示</td>
+</tr>
+<tr>
+<td align="center"><code>%d</code></td>
+<td align="center">整型以十进制方式显示</td>
+</tr>
+<tr>
+<td align="center"><code>%x</code></td>
+<td align="center">整型以十六进制方式显示</td>
+</tr>
+<tr>
+<td align="center"><code>%X</code></td>
+<td align="center">整型以十六进制方式、字母大写显示</td>
+</tr>
+<tr>
+<td align="center"><code>%U</code></td>
+<td align="center"><code>Unicode</code>字符</td>
+</tr>
+<tr>
+<td align="center"><code>%f</code></td>
+<td align="center">浮点数</td>
+</tr>
+<tr>
+<td align="center"><code>%p</code></td>
+<td align="center">指针，以十六进制显示</td>
+</tr>
+</tbody></table>
+<h2 id="流程控制"><a href="#流程控制" class="headerlink" title="流程控制"></a>流程控制</h2><h3 id="判断"><a href="#判断" class="headerlink" title="判断"></a>判断</h3><p>经典的 <code>if-else</code>结构和 <code>switch-case</code>结构。</p>
+<p>对于 <code>if-else</code> 可以在 <code>if</code> 后定义表达式，将判断条件后置到 <code>;</code> 后。</p>
+<pre><code class="language-go">if err := recover(); err != nil &#123;
+	// TODO 
+&#125;
+</code></pre>
+<p>对于 <code>switch-case</code>解构，稍有不同，<code>Go</code> 中默认执行完对于匹配的 <code>case</code> 后会自动<code>break</code>。如果想执行下一个 <code>case</code> 需要使用 <code>fallthrough</code>。</p>
+<pre><code class="language-go">func (l *LogLevel) unmarshalText(text []byte) bool &#123;  
+    switch string(text) &#123;  
+    case &quot;trace&quot;, &quot;TRACE&quot;:  
+       *l = TraceLevel  
+    case &quot;debug&quot;, &quot;DEBUG&quot;:  
+       *l = DebugLevel  
+    case &quot;info&quot;, &quot;INFO&quot;:  
+       *l = InfoLevel  
+    case &quot;warn&quot;, &quot;WARN&quot;:  
+       *l = WarnLevel  
+    case &quot;error&quot;, &quot;ERROR&quot;:  
+       *l = ErrorLevel  
+    case &quot;panic&quot;, &quot;PANIC&quot;:  
+       *l = PanicLevel  
+    case &quot;fatal&quot;:
+	    fallthrough
+    case &quot;FATAL&quot;:  
+       *l = FatalLevel  
+    default:  
+       return false  
+    &#125;  
+    return true  
+&#125;
+</code></pre>
+<h3 id="循环"><a href="#循环" class="headerlink" title="循环"></a>循环</h3><p><code>Go</code> 只有 <code>for</code>循环一种循环方式。不过可以使用 <code>for-range</code>循环。可以通过 <code>break</code> 跳出当前循环，通过 <code>continue</code> 结束本次循环。</p>
+<pre><code class="language-go">for 循环变量; 循环条件; 变量自增 &#123; 
+    // 循环体
+&#125;
+</code></pre>
+<p>关于循环 <code>Go</code> 在 <code>1.22</code> 之前有一个小坑。就是 <code>1.22</code> 之前的 <code>range</code> 循环迭代器的变量都是一个变量，而不是每次创建新变量，虽然提高了效率但是可能存在一些隐患：</p>
+<pre><code class="language-go">allItem := make([]*Item, 0)
+for _, item := range items &#123;
+	allItem = append(allItem, &amp;item)
+&#125;
+
+// 此时所有存进去的 item 都是同一个。
+// 如果在旧版本想要解决 需要进行一次赋值 v:= v 重新创建变量
+allItem := make([]*Item, 0)
+for _, item := range items &#123;
+	 item := item
+	allItem = append(allItem, &amp;item)
+&#125;
+</code></pre>
+<p>同时如果在 <code>goroutine</code> 和闭包环境下，还会产生以下问题：</p>
+<pre><code class="language-go">values := []int&#123;1, 2, 3, 4, 5&#125;
+
+for _, val := range values &#123;
+	go func() &#123;
+		fmt.Printf(&quot;%d &quot;, val)
+	&#125;()
+&#125;
+
+time.Sleep(time.Second * 3)
+
+// 此时输出会混乱，因为本质上 闭包的 val 都是同一个。
+// 可能的输出:
+// 5 5 5 5 5
+// 所以在旧版本想要修改 需要将循环变量传参进去
+values := []int&#123;1, 2, 3, 4, 5&#125;  
+for _, val := range values &#123;  
+    go func(val int) &#123;  
+       fmt.Printf(&quot;%d &quot;, val)  
+    &#125;(val)  
+&#125;
+
+time.Sleep(time.Second * 3)
+
+// 闭包的情况
+var prints []func()  
+for _, v := range []int&#123;1, 2, 3&#125; &#123;  
+    prints = append(prints, func() &#123; fmt.Println(v) &#125;)  
+&#125;
+for _, print := range prints &#123;  
+    print()  
+&#125;
+// 输出
+// 3 3 3
+// 本质上 v 是同一个
+</code></pre>
+<p>在 <code>go1.21</code> 可以开启 <code>GOEXPERIMENT=loopvar</code> 构建程序，这样会在循环时默认创建新的变量，在 <code>go1.22</code> 以后，默认使用新的循环语义，就没有这个问题了。</p>
+<p>同时在 <code>1.22</code> 版本起，<code>range</code> 可以支持对整数类型循环了。</p>
+<pre><code class="language-go">for i := range 10 &#123;
+	fmt.Println(i)
+&#125;
+</code></pre>
+<h2 id="复合数据类型"><a href="#复合数据类型" class="headerlink" title="复合数据类型"></a>复合数据类型</h2><h3 id="Array-数组"><a href="#Array-数组" class="headerlink" title="Array 数组"></a>Array 数组</h3><p>数组是同种数据类型的集合，<strong>数组长度声明时就确定，大小不可变</strong>。</p>
+<pre><code class="language-go">var a [6] int
+// 数组必须执行元素类型和 容量
+// 数组场合都时类型的一部分
+
+// 定义时初始化
+var res [2]bool&#123;false, ture&#125;
+
+// 自动根据初始值判断长度
+var arr = [...]&#123;1,2,3,4&#125;
+
+// 根据索引初始化 同时自动判断长度
+var result = [...]&#123;1:2, 4&#125;
+
+// 定义多维数组
+var position = [3][2]int&#123;  
+    [2]int&#123;1, 0&#125;,  
+    [2]int&#123;1, 1&#125;,  
+    [2]int&#123;0, 1&#125;,  
+&#125;
+</code></pre>
+<blockquote>
+<p>数组是一个 <strong>值类型</strong>，支持 <code>==</code> 和 <code>!=</code> 运算符，其内存是被初始化过的。</p>
+</blockquote>
+<h3 id="Slice-切片"><a href="#Slice-切片" class="headerlink" title="Slice 切片"></a>Slice 切片</h3><p>切片是用于相同类型元素的可变长度序列，支持自动扩容。切片是<strong>引用类型</strong>。</p>
+<pre><code class="language-go">// slice 底层结构
+type slice struct &#123;  
+    array unsafe.Pointer // 数据首地址  
+    len   int            // 长度  
+    cap   int            // 容量  
+&#125;
+</code></pre>
+<p>切片的常规用法有如下：</p>
+<pre><code class="language-go">// 声明
+var nums []int // nil
+
+// 创建&amp;初始化
+// 通过 func make(t Type, size ...IntegerType) Type 函数初始
+// 第二个参数为元素数量
+// 第三个参数为底层数组的容量
+nums = make([]int, 0, 10)
+
+// 获取容量
+capitity := cap(nums)
+
+// 获取长度
+length := len(nums)
+
+// 扩容&amp;追加元素到末尾
+// 因为其扩容会导致地址变化，需要对切片重新赋值
+// func append(slice []T, elements...T) []T
+nums = append(nums, 1)
+
+// 切片操作 左闭右开
+s1 := nums[:3]
+</code></pre>
+<p>需要注意：切片是一个引用类型，其指向了一个底层数组，<strong>对于底层数组的修改会改变切片的值</strong>。</p>
+<p><img src="slice_01.png" alt="go_slice"></p>
+<blockquote>
+<p><strong>要检查切片是否为空，请始终使用<code>len(s) == 0</code>来判断，而不应该使用<code>s == nil</code>来判断</strong>。</p>
+</blockquote>
+<p><code>Go1.18</code> 之前扩容以 1024 为临界点，旧容量小于1024时翻倍，大于时循环增加 <code>25%</code> 直到大于期望容量。</p>
+<p><code>Go1,18</code>后对于 <code>slice</code>底层的扩容操作可以参考源码 <code>$GOROOT/src/runtime/slice.go</code>：</p>
+<pre><code class="language-go">func nextslicecap(newLen, oldCap int) int &#123;  
+    newcap := oldCap  
+    doublecap := newcap + newcap  
+    if newLen &gt; doublecap &#123;  
+       return newLen  
+    &#125;  
+  
+    const threshold = 256  
+    if oldCap &lt; threshold &#123;  
+       return doublecap  
+    &#125;  
+    for &#123;  
+       // Transition from growing 2x for small slices  
+       // to growing 1.25x for large slices. This formula       // gives a smooth-ish transition between the two.       
+       newcap += (newcap + 3*threshold) &gt;&gt; 2  
+  
+       // We need to check `newcap &gt;= newLen` and whether `newcap` overflowed.  
+       // newLen is guaranteed to be larger than zero, hence       // when newcap overflows then `uint(newcap) &gt; uint(newLen)`.       // This allows to check for both with the same comparison.       if uint(newcap) &gt;= uint(newLen) &#123;  
+          break  
+       &#125;  
+    &#125;  
+  
+    // Set newcap to the requested cap when  
+    // the newcap calculation overflowed.    if newcap &lt;= 0 &#123;  
+       return newLen  
+    &#125;  
+    return newcap  
+&#125;
+</code></pre>
+<p>新版本不再设立临界值，而是设置了一个值为256的<code>threshold</code>。超过256时不再是循环增长 <code>1/4</code>，而是每次增加 <code>(旧容量+3*256)/4</code>。也就是说，其优化了扩容策略，让底层数组大小的增长变得更加平滑，不会再出现系数从 2到 <code>1.25</code> 的突变。</p>
+<table>
+<thead>
+<tr>
+<th align="center"><code>oldCap</code></th>
+<th align="center">扩容系数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">256</td>
+<td align="center">2.0</td>
+</tr>
+<tr>
+<td align="center">512</td>
+<td align="center">1.63</td>
+</tr>
+<tr>
+<td align="center">1024</td>
+<td align="center">1.44</td>
+</tr>
+<tr>
+<td align="center">2048</td>
+<td align="center">1.35</td>
+</tr>
+<tr>
+<td align="center">4096</td>
+<td align="center">1.30</td>
+</tr>
+</tbody></table>
+<p>求极限扩容系数最后会趋于 <code>1.25</code>。</p>
+<p>这么设计的有点是：提高小切片的增长速度，减少内存分配次数，让大切片增长率减小，节省内存。释放的内存更容易被利用。</p>
+
+    </div>
+    
+    
+    
+    
+    
+    
+    <div id="comment">
+        <div id="twikoo-container"></div>
+    </div>
+    
+    
+</div>
+
+            <footer id="footer">
+    <div id="footer-wrap">
+        <div>
+            &copy;
+            2025 - 2025 pengqq&#39;s blog
+            <span id="footer-icon">
+                <i class="fa-solid fa-font-awesome fa-fw"></i>
+            </span>
+            &commat;pengqq
+        </div>
+        <div>
+            Based on the <a target="_blank" rel="noopener" href="https://hexo.io">Hexo Engine</a> &amp;
+            <a target="_blank" rel="noopener" href="https://github.com/theme-particlex/hexo-theme-particlex">ParticleX Theme</a>
+        </div>
+        
+    </div>
+    <div>
+        <span id="timeDate">载入天数...</span><span id="times">载入时分秒...</span>
+        <script>
+            var now = new Date(); 
+            function createtime() { 
+                var grt= new Date("03/10/2025 00:00:00");//在此处修改你的建站时间
+                now.setTime(now.getTime()+250); 
+                days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days); 
+                hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours); 
+                if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum); 
+                mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;} 
+                seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum); 
+                snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;} 
+                document.getElementById("timeDate").innerHTML = "已运行 "+dnum+" 天 "; 
+                document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒"; 
+            } 
+        setInterval("createtime()",250);
+        </script>
+    </div>
+    <div class="busuanzi-count">
+        <script async="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <span class="site-uv">
+          <i class="fa fa-user"></i>
+          总访客 <span class="busuanzi-value" id="busuanzi_value_site_uv"></span> 人
+          <span class="post-meta-divider"> | </span>
+        </span>
+        <span class="site-uv">
+          <i class="fa fa-eye"></i>
+          访问量 <span class="busuanzi-value" id="busuanzi_value_site_pv"></span> 次
+        </span>
+    </div>
+</footer>
+
+        </div>
+        
+        <transition name="fade">
+            <div id="preview" ref="preview" v-show="previewShow">
+                <img id="preview-content" ref="previewContent" />
+            </div>
+        </transition>
+        
+    </div>
+    <script src="/js/main.js"></script>
+    
+    
+
+
+
+<script>
+    twikoo.init({
+        el: "#twikoo-container",
+        envId: "",
+        region: "",
+        path: location.pathname,
+        lang: "",
+    })
+</script>
+
+
+    
+</body>
+</html>
