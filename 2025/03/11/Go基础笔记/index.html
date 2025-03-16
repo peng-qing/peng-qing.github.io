@@ -215,13 +215,15 @@
 </ul>
 </li>
 <li><a href="#%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1">面向对象</a><ul>
-<li><a href="#%E6%96%B9%E6%B3%95%E6%8E%A5%E6%94%B6%E8%80%85">方法&amp;接收者</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95method%E6%8E%A5%E6%94%B6%E8%80%85receiver">方法<code>Method</code>&amp;接收者<code>Receiver</code></a></li>
 <li><a href="#%E6%8E%A5%E5%8F%A3-interface">接口 <code>Interface</code></a></li>
 </ul>
 </li>
-<li><a href="#%E5%8C%85%E7%AE%A1%E7%90%86%E5%99%A8">包管理器</a></li>
+<li><a href="#%E5%B7%A5%E5%85%B7%E9%93%BE">工具链</a><ul>
+<li><a href="#%E5%8C%85%E7%AE%A1%E7%90%86">包管理</a></li>
+</ul>
+</li>
 <li><a href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B">异步编程</a></li>
-<li><a href="#%E5%B7%A5%E5%85%B7-tools">工具 <code>Tools</code></a></li>
 </ul>
 <!-- tocstop -->
 
@@ -1186,7 +1188,358 @@ type Logger &#123;
 <blockquote>
 <p><code>Go</code> 不存在 <code>Union</code> 联合体</p>
 </blockquote>
-<h3><span id="channel-通道">Channel 通道</span></h3><h2><span id="面向对象">面向对象</span></h2><h3><span id="方法amp接收者">方法&amp;接收者</span></h3><h3><span id="接口-interface">接口 <code>Interface</code></span></h3><h2><span id="包管理器">包管理器</span></h2><h2><span id="异步编程">异步编程</span></h2><h2><span id="工具-tools">工具 <code>Tools</code></span></h2>
+<h3><span id="channel-通道">Channel 通道</span></h3><p>通道主要是配合协程实现并发同步。他的设计理念是：<strong>不要让计算通过共享内存来通讯，而是应该让他们通过通信来共享内存</strong>。</p>
+<p>而 <code>channel</code> 可以视为一个 <strong>先进先出(<code>FIFO: first in first out</code>)队列</strong>。一些协程向此通道发送数据，由另一些协程进行处理。</p>
+<p>随着一个数据值的传递，一些数据值的所有权从一个协程转移到了另一个协程。即协程发送一个值到<code>channel</code> 可以视为此协程释放了一些值的所有权，协程从通道接受到一个值，可以认为此协程获取了一些值的所有权（也可能没有任何所有权发生转移）。</p>
+<p>通道分为单项和双向：</p>
+<ul>
+<li><code>chan T</code>：视为元素类型<code>T</code> 的双向通道，编译器允许从其接收和发送数据。</li>
+<li><code>chan&lt;- T</code>：视为元素类型 <code>T</code> 的单向发送通道，编译器只允许向其发送数据。</li>
+<li><code>&lt;-chan T</code>：视为元素类型 <code>T</code> 的单向接收通道，编译器只允许从其接收数据。</li>
+</ul>
+<pre><code class="language-go">package main  
+  
+import (  
+    &quot;fmt&quot;  
+)  
+  
+func Scanner(in chan&lt;- string) &#123;  
+    // 只允许发送数据  
+    for i := 0; i &lt; 20; i++ &#123;  
+       in &lt;- &quot;Hello World!&quot;  
+    &#125;  
+    close(in)  
+&#125;  
+  
+func Printer(out &lt;-chan string) &#123;  
+    for msg := range out &#123;  
+       fmt.Println(msg)  
+    &#125;  
+&#125;  
+  
+func Processor(out &lt;-chan string, in chan&lt;- string) &#123;  
+    for msg := range out &#123;  
+       in &lt;- msg  
+    &#125;  
+    close(in)  
+&#125;  
+  
+func main() &#123;  
+    in := make(chan string)  
+    go Scanner(in)  
+    out := make(chan string)  
+    go Processor(in, out)  
+  
+    Printer(out)  
+&#125;
+</code></pre>
+<p><strong>所有的通道均为可比较类型</strong>。其值为引用类型，通道的赋值会使得多个通道值共享底层部分。</p>
+<p>通道有几个基本操作：</p>
+<ul>
+<li>关闭 ，通过内建函数<code>close</code></li>
+</ul>
+<pre><code class="language-go">close(ch)
+</code></pre>
+<ul>
+<li>发送，需要注意，其不能为单向接收通道，<code>&lt;-</code> 为数据发送操作符</li>
+</ul>
+<pre><code class="language-go">ch &lt;- v
+</code></pre>
+<ul>
+<li>接收，需要注意，其不能为单向接收通道，<code>&lt;-</code> 为数据接收操作符。如果一个通道操作不永久阻塞，其至少会返回一个值。</li>
+</ul>
+<pre><code class="language-go">v := &lt;- ch
+
+// ok 表示第一个值释放时通道被关闭之前返回的
+v, ok := &lt;- ch
+</code></pre>
+<ul>
+<li>查询容量</li>
+</ul>
+<pre><code class="language-go">cap(ch)
+</code></pre>
+<ul>
+<li>查询通道长度</li>
+</ul>
+<pre><code class="language-go">len(ch)
+</code></pre>
+<blockquote>
+<p>通道操作都是并发安全的。</p>
+</blockquote>
+<p>对不同状态的通道进行相关操作会得到不同的结果，可以参考下表：</p>
+<table>
+<thead>
+<tr>
+<th align="center">操作</th>
+<th align="center">零值(<code>nil</code>)通道</th>
+<th align="center">非零值已关闭</th>
+<th align="center">非零值未关闭</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">关闭</td>
+<td align="center"><code>panic</code></td>
+<td align="center"><code>panic</code></td>
+<td align="center">成功关闭</td>
+</tr>
+<tr>
+<td align="center">发送数据</td>
+<td align="center">永久阻塞</td>
+<td align="center"><code>panic</code></td>
+<td align="center">阻塞或者发送成功</td>
+</tr>
+<tr>
+<td align="center">接收数据</td>
+<td align="center">永久阻塞</td>
+<td align="center">永不阻塞</td>
+<td align="center">阻塞或成功接收</td>
+</tr>
+<tr>
+<td align="center"><strong>通道的元素值的传递都是复制过程</strong>，从一个协程传递到另一个协程，此值被复制至少一遍。如果值传递过程中在某个通道的缓存队列中停留过，则在传递过程中被复制两次，一次在推入通道队列的时候，一次为从缓冲队列取出的时候。</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>官方编译器最大支持的通道元素类型尺寸为 <code>65535</code>，值传递的过程中，只有直接值被复制。</p>
+</blockquote>
+<p>可以使用 <code>for-range</code> 来循环从通道中接收元素直到通道关闭并且他的缓冲队列为空。不同于 <code>slice</code>、<code>map</code>，通道只能出现一个循环变量用于存储接收到的值。</p>
+<pre><code class="language-go">for v := range ch &#123;
+	// todo
+&#125;
+</code></pre>
+<p>同时为 <code>channel</code> 专门设计了 <code>select-case</code> 分支流程控制语法（类似与 <code>switch-case</code>）。对于 <code>select-case</code>中的所有非阻塞的 <code>case</code>，会<strong>随机</strong>选择一个执行，如果所有的 <code>case</code> 都阻塞且未添加 <code>default</code> 分支，会阻塞当前协程。</p>
+<pre><code class="language-go">package main  
+  
+import (  
+    &quot;context&quot;  
+    &quot;fmt&quot;    &quot;time&quot;)  
+  
+func main() &#123;  
+    ctx, ctxCancel := context.WithCancel(context.Background())  
+    ticker := time.NewTicker(time.Second)  
+    for &#123;  
+       select &#123;  
+       case &lt;-ctx.Done():  
+          fmt.Println(&quot;exit&quot;)  
+          return  
+       case &lt;-ticker.C:  
+          fmt.Println(&quot;tick&quot;)  
+          ctxCancel()  
+       &#125;  
+    &#125;  
+&#125;
+</code></pre>
+<p>对于 <code>select-case</code>流程的<a target="_blank" rel="noopener" href="https://github.com/golang/go/blob/master/src/runtime/select.go">实现机制</a>：</p>
+<ol>
+<li><p>将所有 <code>case</code> 中的 通道表达式和发送值表达式按照 从上到下、从左到右 的顺序估值。在赋值语句中作为源值的数据接收操作对应的目标值在此时不需要被估值。</p>
+</li>
+<li><p>将所有的分支随机排序，<code>default</code> 总是在最后。所有<code>case</code> 操作的通道可能是重复的。</p>
+</li>
+<li><p>为了防止下一步操作中出现死锁，对所有的 <code>case</code> 操作中相关的通道进行排序（这个顺序并不重要，官方编译器使用通道的地址顺序进行排序），排序前<code>N</code>个（<code>N</code>为<code>case</code>中涉及到的不重复通道数）通道不存在重复情况。</p>
+</li>
+<li><p>按照上一步生产的通道锁顺序获取所有相关的通道的锁。（<strong>通道锁顺序</strong>是针对排序结果中前 <code>N</code>个通道来说的，<strong>通道锁逆序</strong>是指此顺序的逆序）</p>
+</li>
+<li><p>按照随机排序后的<code>case</code>分支顺序来顺序检查相应分支：</p>
+<ol>
+<li>如果是 <code>case</code> 且 相应通道操作是向已关闭通道发送数据，则根据<strong>通道锁逆序</strong>解锁所有通道并在当前协程产生 <code>panic</code>，结束。</li>
+<li>如果是 <code>case</code> 且 相应通道非阻塞，按照<strong>通道锁逆序</strong>解锁所有通道并执行相应的 <code>case</code> 分支代码块（此操作可能会唤醒另一个阻塞的协程），结束。</li>
+<li>如果是 <code>default</code>，按照<strong>通道锁逆序</strong>解锁所有通道，并执行 <code>default</code>代码，结束。</li>
+</ol>
+</li>
+<li><p>如果 <code>default</code> 不存在且所有的 <code>case</code> 均阻塞，将当前协程（包含对应的 <code>case</code>信息）推入每个 <code>case</code> 对应的通道的 <strong>发送数据协程队列</strong> 或者 <strong>接收数据协程队列</strong>。（当前协程可能多次被推入同一个通道的这两个队列中，因为多个·<code>case</code> 操作对应的通道可能为同一个）</p>
+</li>
+<li><p>当前协程进入阻塞状态并按照<strong>通道锁逆序</strong>解锁所有通道。</p>
+</li>
+<li><p>等待其他协程通过通道操作唤醒当前协程。</p>
+</li>
+<li><p>如果被其他协程的通道操作唤醒，目标操作可能是关闭通道或者数据的接收或者发送操作。</p>
+<ol>
+<li>如果是数据发送或者接收操作，执行对应<code>case</code>，过程中当前协程将从对应的<code>case</code>操作相关的通道的 <strong>发送数据协程队列</strong> 或者 <strong>接收数据协程队列</strong> <strong>弹出</strong>。</li>
+</ol>
+</li>
+<li><p>按照<strong>通道锁顺序</strong>获取所有相关通道的锁。</p>
+</li>
+<li><p>将当前协程从各个 <code>case</code> 操作中对应的通道的 <strong>发送数据协程队列</strong> 或者 <strong>接收数据协程队列</strong>  （可能以非弹出的方式）<strong>移除</strong>。<br>1. 如果是被关闭操作唤醒，执行5<br>2. 如果是被数据发送&#x2F;数据接收操作唤醒，目标<code>case</code>在9中已经知晓。按照<strong>通道锁逆序</strong>解锁所有通道并执行目标 <code>case</code>。</p>
+</li>
+<li><p>结束。</p>
+</li>
+</ol>
+<h2><span id="面向对象">面向对象</span></h2><h3><span id="方法methodamp接收者receiver">方法<code>Method</code>&amp;接收者<code>Receiver</code></span></h3><p><code>Go</code>没有 <code>Class</code> 但是支持一些面向对象的特性。比如为类型 <code>T</code> 和 <code>*T</code> 显示地声明一个方法（方法基本上跟函数类似），其中类型 <code>T</code> 必须满足条件：</p>
+<ol>
+<li>需要是一个自定义类型</li>
+<li><code>T</code>类型需要和方法声明在同一个包</li>
+<li><code>T</code> 不能是一个指针或者接口类型</li>
+</ol>
+<p>类型<code>T</code>和 <code>*T</code> 即为各自方法的属主（接收者）类型。类型 <code>T</code>为 <code>T</code> 和 <code>*T</code> 声明的所有方法的属主基类型。如果为类型声明了某方法，即该类型拥有此方法。</p>
+<p>每个方法对应着一个隐式声明的函数：</p>
+<pre><code class="language-go">type Book struct &#123;  
+    pages int  
+&#125;  
+  
+func (b Book) Pages() int &#123;  
+    return b.pages  
+&#125;  
+func (b *Book) SetPages(pages int) &#123;  
+    b.pages = pages  
+&#125;
+
+// 对应隐式函数 
+// 由此也可以看出，如果需要修改接收者变量的数据，请使用指针接收者
+func Book.Pages(b Book) int &#123;  
+    return b.pages // 此函数体和Book类型的Pages方法体一样  
+&#125;  
+func (*Book).SetPages(b *Book, pages int) &#123;  
+    b.pages = pages // 此函数体和*Book类型的SetPages方法体一样  
+&#125;
+</code></pre>
+<blockquote>
+<p>这种类型函数只能由编译器隐式声明。</p>
+</blockquote>
+<p>如果需要实现面向对象的继承效果，可以通过结构体嵌套实现模拟（同时注意嵌套结构体的字段冲突）。</p>
+<pre><code class="language-go">type commonHandler struct &#123;  
+    mutex       sync.Mutex  
+    writeSyncer io.Writer  
+    opts        *LogHandlerOptions  
+&#125;
+
+type JsonHandler struct &#123;  
+    *commonHandler  
+&#125;
+
+type TextHandler struct &#123;  
+    *commonHandler  
+&#125;
+</code></pre>
+<h3><span id="接口-interface">接口 <code>Interface</code></span></h3><p>接口是一种特殊的类型，其可以包裹非接口值实现反射、多态。同时在 <code>go1.18</code>开始，自定义泛型被引入， 接口类型也可以用作泛型约束。</p>
+<p>这也导致了 <code>go1.18</code>之前所有的接口与均可用作值类型，<code>go1.18</code>以后，有些接口只能用作类型约束。可用于值类型的接口成为基本接口类型（这里主要是基本接口类型）。</p>
+<p>接口类型是通过内嵌若干接口元素来定义类型条件的，目前支持两种接口元素：方法元素和类型元素。</p>
+<pre><code class="language-go">type error interface &#123;  
+    Error() string  
+&#125;
+
+// go1.18之前 只有接口类型可以内勤在接口类型中
+// 即接口多继承
+type WriteSyncer interface &#123;  
+    io.WriteCloser  
+    Sync() error  
+&#125;
+
+// go1.18以后  接口类型可以作为泛型约束
+// PointerConstraint 指针类型泛型约束  
+type PointerConstraint[T any] interface &#123;  
+    ~*T  
+&#125;  
+  
+type Option[T PointerConstraint[U], U any] interface &#123;  
+    Apply(T)  
+&#125;  
+  
+type optionFunc[T PointerConstraint[U], U any] func(T)  
+  
+func (f optionFunc[T, U]) Apply(o T) &#123;  
+    f(o)  
+&#125;  
+  
+type options struct &#123;  
+    name string  
+&#125;  
+  
+func WithOptions(name string) Option[*options, options] &#123;  
+    return optionFunc[*options, options](func(o *options) &#123;  
+       o.name = name  
+    &#125;)  
+&#125;
+</code></pre>
+<blockquote>
+<p>需要注意：接口实现是隐式的，其关注行为而非类型。</p>
+</blockquote>
+<p>空接口是一个特殊的接口类型，其没有内嵌任何方法或类型。同时在 <code>Go1.18</code>引入了空接口的类型别名 <code>any</code>。</p>
+<p><strong>因为空接口不包含任何方法，因此所有类型都实现了空接口</strong>。</p>
+<pre><code class="language-go">type any = interface&#123;&#125;
+</code></pre>
+<p>一个接口值中存储的动态类型信息可以被用来检视此接口值的动态值和操纵此动态值所引用的值。 这称为反射。</p>
+<p>针对接口，我们常用的是<strong>类型断言</strong>。语法格式为 <code>i.(T)</code>，其中 <code>i</code> 为一个接口值，<code>T</code> 为一个类型名或者自定义类型（可以为任意一个非接口类型或者任意一个接口类型）。</p>
+<pre><code class="language-go">func test() &#123;  
+    // 编译器将把123的类型推断为内置类型int。  
+    var x interface&#123;&#125; = 123  
+    // 情形一：  
+    n, ok := x.(int)  
+    fmt.Println(n, ok) // 123 true  
+    n = x.(int)  
+    fmt.Println(n) // 123  
+    // 情形二：  
+    a, ok := x.(float64)  
+    fmt.Println(a, ok) // 0 false  
+    // 情形三：  
+    a = x.(float64) // 将产生一个恐慌  
+&#125;
+</code></pre>
+<p>如果出现针对接口值相关的比较：</p>
+<ul>
+<li>比较一个接口值和非接口值</li>
+<li>比较两个接口</li>
+</ul>
+<p>对于非接口值的类型，必须实现了接口值的类型，所以可以隐式转换为两个接口的比较。而比较两个接口值，即比较两个接口值的动态类型和动态值：</p>
+<ol>
+<li>其中一个接口时 <code>nil</code> ，则比较另一个接口是否也为 <code>nil</code></li>
+<li>如果这两个接口值的动态类型不一样，则比较结果为 <code>false</code></li>
+<li>如果其动态类型一样：<ol>
+<li>动态类型为不可比较类型，<code>panic</code></li>
+<li>比较动态值的比较结果</li>
+</ol>
+</li>
+</ol>
+<p>即：只有两个接口都为 <code>nil</code> 或者两个接口的动态值、动态类型相同为可比较类型且动态值相等时为 <code>true</code>。</p>
+<p><code>Go</code> 中针对非空接口和接口底层上有两种实现，即 <code>iface</code> 和 <code>eface</code>。其中 <code>eface</code> 即 <code>empty interface</code> 表示不含 <code>method</code> 的接口（也就是空接口）。</p>
+<pre><code class="language-go">type _type struct &#123;  
+    size       uintptr  // type size  
+    ptrdata    uintptr  // size of memory prefix holding all pointers    
+    hash       uint32   // hash of type; avoids computation in hash tables    
+    tflag      tflag    // extra type information flags  
+    align      uint8    // alignment of variable with this type  
+    fieldalign uint8    // alignment of struct field with this type  
+    kind       uint8    // enumeration for C  
+    alg        *typeAlg // algorithm table  
+    gcdata     *byte    // garbage collection data  
+    str        nameOff  // string form  
+    ptrToThis  typeOff  // type for pointer to this type, may be zero  
+&#125;
+
+type eface struct &#123;
+	// 数据类型的描述
+    _type *_type
+    // 具体的类型
+    data  unsafe.Pointer  
+&#125;
+
+// layout of Itab known to compilers  
+// allocated in non-garbage-collected memory  
+// Needs to be in sync with  
+// ../cmd/compile/internal/gc/reflect.go:/^func.dumptypestructs.  
+type itab struct &#123;  
+    inter  *interfacetype  
+    _type  *_type  
+    link   *itab  
+    bad    int32  
+    inhash int32      // has this itab been added to hash?    fun    [1]uintptr // variable sized  
+&#125;
+
+type iface struct &#123;
+	// 接口元信息 可以理解为 pair&lt;接口类型, 具体类型&gt;
+    tab  *itab  
+    data unsafe.Pointer  
+&#125;
+</code></pre>
+<h2><span id="工具链">工具链</span></h2><h3><span id="包管理">包管理</span></h3><p><code>Go</code>中的包定义必须在代码开始之前，使用 <code>package</code> 关键字定义。（其之前可能存在相关的编译约束）</p>
+<pre><code class="language-go">//go:build linux  
+// +build linux  
+  
+package utils
+</code></pre>
+<p>包的定义有如下规则：</p>
+<h2><span id="异步编程">异步编程</span></h2>
     </div>
     
     
