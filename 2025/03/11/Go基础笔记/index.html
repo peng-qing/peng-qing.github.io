@@ -223,7 +223,11 @@
 <li><a href="#%E5%8C%85%E7%AE%A1%E7%90%86">包管理</a></li>
 </ul>
 </li>
-<li><a href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B">异步编程</a></li>
+<li><a href="#%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B">异步编程</a><ul>
+<li><a href="#%E5%8D%8F%E7%A8%8B">协程</a></li>
+<li><a href="#%E9%94%81-mutex">锁 <code>Mutex</code></a></li>
+</ul>
+</li>
 </ul>
 <!-- tocstop -->
 
@@ -1539,7 +1543,211 @@ type iface struct &#123;
 package utils
 </code></pre>
 <p>包的定义有如下规则：</p>
-<h2><span id="异步编程">异步编程</span></h2>
+<ul>
+<li>一个文件夹下只能由一个包，同一个包文件不能分散多个文件夹</li>
+<li>包名可以不同于文件夹名，包名不能带 <code>-</code></li>
+<li><code>main</code> 包为程序入口，编译时不含 <code>main</code>的源代码不会得到可执行文件</li>
+<li>包中的标识符以首字母大写表示对外暴露，首字母小写表示私有</li>
+</ul>
+<p>使用 <code>import</code> 关键字导入包，如果不使用 <code>go mod</code> 模式，包名从 <code>$GOPATH/src/</code> 后开始计算。同时为了规范，一般采用如下格式：</p>
+<pre><code class="language-go">package main
+
+import (
+	// 标准库
+	stdsql &quot;database/sql&quot;
+
+	// 项目库
+	logger &quot;common/logger&quot;
+
+	// 第三方库
+	_ &quot;github.com/go-sql-driver/mysql&quot;
+)
+</code></pre>
+<blockquote>
+<p><code>Go</code> 中禁止循环导入包 </p>
+</blockquote>
+<p><code>Go</code>中可以在每个包声明 <code>init()</code> 函数来实现包中一些相关变量的初始化，这个函数会在包首次被导入时字段触发。<code>init()</code> 函数没有参数也没有返回值，只能在程序运行时自动被调用，不能再代码中主动调用。</p>
+<pre><code class="language-bash">// 导入顺序
+main--&gt; import --&gt;A-- import --&gt;B-- import --&gt;C
+// 执行顺序
+main.init()&lt;---A.init()&lt;---B.init()&lt;---C.init()
+</code></pre>
+<p>在古老时代<code>Go</code>还曾用过 <code>Vendor</code> 作为包管理，但是后面基本上被官方的 <code>go modules</code>给统一了。</p>
+<pre><code class="language-bash">export GO111MODULE=on
+</code></pre>
+<blockquote>
+<p>现在依然可以开启 <code>vendor</code> 来作为项目的本地包管理：<code>go build -mod=vendor</code></p>
+</blockquote>
+<p>常规的<code>go.mod</code>相关定义：</p>
+<pre><code class="language-go">// module 定义模块路径
+module projectName  
+
+// go 版本
+go 1.24.1
+
+// require 包+版本号
+// // indirect 表示间接依赖 
+require google.golang.org/protobuf v1.36.5 // indirect
+
+// replace 提供模块路径 或者版本
+require common v0.0.0
+replace common =&gt; ./common
+
+// exclude 排除特定版本
+exclude (  
+    github.com/bad/module v1.2.3  
+)
+</code></pre>
+<p><code>go.sum</code> 文件记录了每个依赖性的哈希值和版本信息，以确保依赖性的一致性和完整性。其不是 <code>go.mod</code>的一部分但是和其密切相关。</p>
+<pre><code class="language-bash">⮞  go mod help
+Go mod provides access to operations on modules.
+
+Note that support for modules is built into all the go commands,
+not just &#39;go mod&#39;. For example, day-to-day adding, removing, upgrading,
+and downgrading of dependencies should be done using &#39;go get&#39;.
+See &#39;go help modules&#39; for an overview of module functionality.
+
+Usage:
+
+        go mod &lt;command&gt; [arguments]
+
+The commands are:
+
+        download    download modules to local cache
+        edit        edit go.mod from tools or scripts
+        graph       print module requirement graph
+        init        initialize new module in current directory
+        tidy        add missing and remove unused modules
+        vendor      make vendored copy of dependencies
+        verify      verify dependencies have expected content
+        why         explain why packages or modules are needed
+
+Use &quot;go help mod &lt;command&gt;&quot; for more information about a command.
+</code></pre>
+<p>在 <code>Go1.18</code> 以后，子模块可以通过工作区的模式实现，其能给在本地项目的 <code>go.work</code> 文件中，通过设置一系列以来的模块本地路径，再将<strong>路径下的模块组成一个当前的工作区</strong>，他的读取优先级是最高的。</p>
+<pre><code class="language-bash">⮞  go work help
+
+Usage:
+
+        go work &lt;command&gt; [arguments]
+
+The commands are:
+
+        edit        edit go.work from tools or scripts
+        init        initialize workspace file
+        sync        sync workspace build list to modules
+        use         add modules to workspace file
+        vendor      make vendored copy of dependencies
+
+Use &quot;go help work &lt;command&gt;&quot; for more information about a command.
+</code></pre>
+<p>生成的 <code>work</code>文件可以参考：</p>
+<pre><code class="language-go">go 1.24.1  
+  
+use (  
+    .  
+    ./common
+)
+  
+replace (  
+    golang.org/x/net =&gt; example.com/fork/net v1.4.5  
+)
+</code></pre>
+<p><code>go.work</code> 的 <code>replace</code> 优先级会高于 <code>go.mod</code>中的 <code>replace</code>指令。</p>
+<blockquote>
+<p>可以通过 <code>-workfile=off</code>来禁用工作区模式</p>
+</blockquote>
+<h2><span id="异步编程">异步编程</span></h2><h3><span id="协程">协程</span></h3><p><code>Go</code>不提供线程的创建方式，采用 <code>goroutine</code> 协程来实现并发异步。相对于 <code>thread</code> 其更轻量级，<code>goroutine</code> 处于用户态完全由<code>go</code>的协程调度器调度完成。</p>
+<p>其可以通过 <code>channel</code>等机制实现 <code>goroutine</code> 之间的同步等操作。对于 <code>go</code>来说，每个函数都是一个并发单元，可以通过 <code>go</code> 关键字为函数创建一个 <code>goroutine</code>。</p>
+<pre><code class="language-go">func (gs *TcpConnectionKeeper) startBroker(broker ConnectionBroker) &#123;  
+    defer broker.Close()  
+  
+    cid := broker.ConnectionID()  
+    if cid == &quot;&quot; || cid != gs.connID &#123;
+       return  
+    &#125;  
+  
+    heartbeatAckChan := make(chan ControlPacket)  
+    defer close(heartbeatAckChan)  
+  
+    ctxTask, ctxTaskCancel := context.WithCancel(gs.ctx)  
+    defer ctxTaskCancel()  
+  
+    wg := sync.WaitGroup&#123;&#125;  
+  
+    wg.Add(1)  
+    go func() &#123;  
+       defer wg.Done()  
+       defer ctxTaskCancel()  
+       gs.readLoop(ctxTask, broker, heartbeatAckChan)  
+    &#125;()  
+  
+    wg.Add(1)  
+    go func() &#123;  
+       defer wg.Done()  
+       defer ctxTaskCancel()  
+       gs.writeLoop(ctxTask, broker)  
+    &#125;()  
+  
+    heartbeat := broker.Keepalive()  
+    if heartbeat &gt; 0 &#123;  
+       wg.Add(1)  
+       go func() &#123;  
+          defer wg.Done()  
+          defer ctxTaskCancel()  
+          gs.keepaliveLoop(ctxTask, heartbeat, heartbeatAckChan)  
+       &#125;()  
+    &#125;  
+  
+    wg.Wait()  
+&#125;
+</code></pre>
+<p><code>Go</code> 中的 <code>goroutine</code> 属于<strong>有栈协程</strong>，不同于 <code>js</code> 的 <code>Promise</code>，<code>goroutine</code> 有自己的寄存器上下文，和底层线程属于 <code>M:N</code> 的关系。<code>js</code> 的 <code>Promise</code> 是 无栈协程的实现方式，本质上是 <strong>事件循环</strong>。</p>
+<p>多个 <code>goroutine</code> 同时操作一个资源（临界区）时，同样会发送数据竞争问题。官方提供了 <code>sync</code>包来处理控制访问共享资源的方法。</p>
+<h3><span id="锁-mutex">锁 <code>Mutex</code></span></h3><p>互斥锁时一种常用的控制共享资源访问的方法，它能保证同时只有一个 <code>goroutine</code> 可以访问共享资源。在 <code>Go</code> 中主要实现为 <code>sync.Mutex</code> 和 <code>synx.RWMutex</code>，他们都实现了 <code>sync.Locker</code>接口。</p>
+<p>其中 <code>sync.RWMutex</code> 还有 <code>RLock()</code> 和 <code>RUnlock()</code> 方法用来支持多个读取着读取同一份数据但防止此数据被多个 <code>goroutine</code> 写入。</p>
+<pre><code class="language-go">package main  
+
+import (  
+	&quot;fmt&quot;  
+	&quot;runtime&quot;  
+	&quot;sync&quot;  
+) 
+
+type Counter struct &#123;  
+    m sync.Mutex  
+    n uint64  
+&#125;  
+  
+func (c *Counter) Value() uint64 &#123;  
+    c.m.Lock()  
+    defer c.m.Unlock()  
+    return c.n  
+&#125;
+
+func (c *Counter) Increase(delta uint64) &#123;  
+    c.m.Lock()  
+    c.n += delta  
+    c.m.Unlock()  
+&#125;
+
+func main() &#123;  
+    var c Counter  
+    for i := 0; i &lt; 100; i++ &#123;  
+       go func() &#123;  
+          for k := 0; k &lt; 100; k++ &#123;  
+             c.Increase(1)  
+          &#125;  
+       &#125;()  
+    &#125;  
+    // 此循环仅为演示目的。  
+    for c.Value() &lt; 10000 &#123;  
+       runtime.Gosched()  
+    &#125;  
+    fmt.Println(c.Value()) // 10000  
+&#125;
+</code></pre>
+
     </div>
     
     
