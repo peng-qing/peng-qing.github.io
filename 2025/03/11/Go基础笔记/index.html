@@ -217,6 +217,8 @@
 <li><a href="#%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1">面向对象</a><ul>
 <li><a href="#%E6%96%B9%E6%B3%95method%E6%8E%A5%E6%94%B6%E8%80%85receiver">方法<code>Method</code>&amp;接收者<code>Receiver</code></a></li>
 <li><a href="#%E6%8E%A5%E5%8F%A3-interface">接口 <code>Interface</code></a></li>
+<li><a href="#%E6%B3%9B%E5%9E%8B">泛型</a></li>
+<li><a href="#%E8%BF%AD%E4%BB%A3%E5%99%A8">迭代器</a></li>
 </ul>
 </li>
 <li><a href="#%E5%B7%A5%E5%85%B7%E9%93%BE">工具链</a><ul>
@@ -229,6 +231,13 @@
 <li><a href="#%E7%AD%89%E5%BE%85%E7%BB%84-waitgroup">等待组 <code>WaitGroup</code></a></li>
 <li><a href="#%E5%A4%9A%E5%8D%8F%E7%A8%8B%E9%97%B4%E9%80%9A%E7%9F%A5-cond">多协程间通知 <code>Cond</code></a></li>
 <li><a href="#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C-atomic">原子操作 Atomic</a></li>
+<li><a href="#gmp%E6%A8%A1%E5%9E%8B"><code>GMP</code>模型</a></li>
+</ul>
+</li>
+<li><a href="#%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E5%92%8Cgc">内存模型和GC</a><ul>
+<li><a href="#%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86">内存管理</a></li>
+<li><a href="#%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90">逃逸分析</a></li>
+<li><a href="#gc-%E7%AE%97%E6%B3%95">GC 算法</a></li>
 </ul>
 </li>
 </ul>
@@ -1149,6 +1158,20 @@ func main() &#123;
 <blockquote>
 <p>注意， <code>recover</code>必须搭配 <code>defer</code> 使用。<code>defer</code> 必须在可能 <code>panic</code> 之前定义，<code>recover</code> 才能拦截到。</p>
 </blockquote>
+<p><code>defer</code>的实现上是由 <code>runtime._defer</code>结构体：</p>
+<pre><code class="language-go">type _defer struct &#123;
+    started   bool
+    heap      bool
+    openDefer bool
+    sp        uintptr 
+    pc        uintptr 
+    fn        func()
+    _panic    *_panic
+    link      *_defer // 指向下一个 defer
+    fd        unsafe.Pointer
+    varp      uintptr
+</code></pre>
+<p><code>defer</code> 和 协程是直接关联的，<code>defer</code> 再运行时以链表形式存在，链表头在协程 <code>G</code> 上，当协程执行函数时，会按照顺序将注册的 <code>defer</code> 在链表头部插入。</p>
 <h3><span id="struct-结构体">Struct 结构体</span></h3><p><code>Go</code> 可以使用 <code>type</code> 关键字声明类型别名或者自定义类型。</p>
 <pre><code class="language-go">type LogLevel int
 
@@ -1539,6 +1562,121 @@ type iface struct &#123;
     data unsafe.Pointer  
 &#125;
 </code></pre>
+<h3><span id="泛型">泛型</span></h3><p><code>go1.18</code>中正式引入泛型。其并未完全采用类似 <code>C++/Rust</code> 这种为每个用到的类型都生成一份模板代码，这样虽然性能好，但是答复拖慢编译速度，同时导致编译的二进制文件体积膨胀。也不是完全采用编译时生成类型字典存储在只读数据段，在调用时根据字典查询类型信息，这样会导致巨大的运行时开销，性能较差。</p>
+<p><code>Go</code> 的泛型采用一个折中的选择，对于同种内存形状（由内存分配器决定），使用单态化，为其生成同一份代码（比如 <code>type MyInt int</code> 和 <code>int</code> ）。但是对于指针而言，所有的指针类型都是一个内存形状，此时则是采取字典方式在运行时获取类型信息。所以 <code>Go</code> 的泛型仍然存在运行时开销。</p>
+<p>同时，<code>go1.18</code>后接口的定义也变成了类型集，含有类型集的接口又称为通用接口。</p>
+<pre><code class="language-go">type Conn[T net.Conn | websocket.Conn] struct &#123;  
+    conn T  
+&#125;
+
+// 并集  
+type SignedInt interface &#123;  
+    int8 | int16 | int | int32 | int64  
+&#125;  
+  
+type UnSignedInt interface &#123;  
+    uint8 | uint16 | uint32 | uint64  
+&#125;  
+  
+type Integer interface &#123;  
+    SignedInt | UnSignedInt  
+&#125;  
+  
+// 交集  
+type Number interface &#123;  
+    SignedInt  
+    Integer
+&#125;
+
+// 底层类型 使用 ~
+type Int interface &#123;  
+    ~int8 | ~int16 | ~int | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint | ~uint32 | ~uint64  
+&#125;
+</code></pre>
+<blockquote>
+<p>如果交际为空，即为空集，传递任何类型都无法通过编译</p>
+</blockquote>
+<p>需要注意的是：</p>
+<ul>
+<li>泛型不能作为基础类型</li>
+<li>泛型类型无法使用类型断言</li>
+<li>匿名结构体不支持泛型</li>
+<li>不支持泛型方法</li>
+<li>类型集无法作为类型实参</li>
+<li>非接口类型，类型并集中不能又交集，接口类型则允许有交集</li>
+<li>类型集无法直接或间接的并入自身</li>
+<li>方法集无法并入类型集</li>
+</ul>
+<pre><code class="language-go">// 通用的对象池
+type Pool[T any] struct &#123;  
+    pool sync.Pool  
+&#125;  
+  
+func NewPool[T any](fn func() T) *Pool[T] &#123;  
+    return &amp;Pool[T]&#123;  
+       pool: sync.Pool&#123;  
+          New: func() any &#123;  
+             return fn()  
+          &#125;,  
+       &#125;,  
+    &#125;  
+&#125;  
+  
+func (gs *Pool[T]) Get() T &#123;  
+    return gs.pool.Get().(T)  
+&#125;  
+  
+func (gs *Pool[T]) Put(element T) &#123;  
+    gs.pool.Put(element)  
+&#125;
+</code></pre>
+<h3><span id="迭代器">迭代器</span></h3><p><code>go1.23</code> 中对 <code>for-range</code> 支持了 <code>range over func</code>。这样就可以使用自定义迭代器了。</p>
+<p>其本质上是一个闭包函数，接收一个回调函数作为参数，迭代过程会将序列中的元素逐个传递给回调函数 <code>yield</code>。</p>
+<ul>
+<li>推送式迭代器（<code>pushing iterator</code>）：由迭代器控制迭代逻辑，用户被动获取元素</li>
+</ul>
+<pre><code class="language-go">// iter 标准库定义的迭代器类型
+// 只接受一个参数 
+type Seq[V any] func(yield func(V) bool)
+
+// 接收两个参数
+type Seq2[K, V any] func(yield func(K, V) bool)
+
+// 参考
+for f := range Fibonacci(n) &#123;
+    fmt.Println(f)
+&#125;
+// 等同于 
+Fibonacci(n)(func(f int) bool &#123;
+    fmt.Println(f)
+    return true
+&#125;)
+</code></pre>
+<ul>
+<li>拉取式迭代器（<code>pulling iterator</code>）：由用户来控制迭代逻辑，主动的去获取序列元素。</li>
+</ul>
+<pre><code class="language-go">// iter 库定义的拉取式迭代器 采用闭包记录状态
+// 可以将推送式迭代器转换为拉取式迭代器
+// 都接收一个迭代器作为参数，返回两个函数 stop() 和 next() 用于控制携带继续和停止
+// next 会返回被迭代的元素和一个表示当前值释放有效的布尔值 结束时返回0值
+// 当不使用迭代器后 一定要调用 stop
+// 迭代器不是并发安全的
+func Pull[V any](seq Seq[V]) (next func() (V, bool), stop func())
+
+func Pull2[K, V any](seq Seq2[K, V]) (next func() (K, V, bool), stop func())
+
+// 参考
+func ScanLines(reader io.Reader) iter.Seq2[string, error] &#123;  
+    scanner := bufio.NewScanner(reader)  
+    return func(yield func(string, error) bool) &#123;  
+       for scanner.Scan() &#123;  
+          if !yield(scanner.Text(), scanner.Err()) &#123;  
+             return  
+          &#125;  
+       &#125;  
+    &#125;  
+&#125;
+</code></pre>
 <h2><span id="工具链">工具链</span></h2><h3><span id="包管理">包管理</span></h3><p><code>Go</code>中的包定义必须在代码开始之前，使用 <code>package</code> 关键字定义。（其之前可能存在相关的编译约束）</p>
 <pre><code class="language-go">//go:build linux  
 // +build linux  
@@ -1660,6 +1798,7 @@ replace (
 <blockquote>
 <p>可以通过 <code>-workfile=off</code>来禁用工作区模式</p>
 </blockquote>
+<p>由于 <code>Go</code> 编译的情况可能比较复杂，建议遇到复杂编译情况时可以使用 <code>makefile</code> 或者 编写编译脚本来完成。</p>
 <h2><span id="异步编程">异步编程</span></h2><h3><span id="协程">协程</span></h3><p><code>Go</code>不提供线程的创建方式，采用 <code>goroutine</code> 协程来实现并发异步。相对于 <code>thread</code> 其更轻量级，<code>goroutine</code> 处于用户态完全由<code>go</code>的协程调度器调度完成。</p>
 <p>其可以通过 <code>channel</code>等机制实现 <code>goroutine</code> 之间的同步等操作。对于 <code>go</code>来说，每个函数都是一个并发单元，可以通过 <code>go</code> 关键字为函数创建一个 <code>goroutine</code>。</p>
 <pre><code class="language-go">func (gs *TcpConnectionKeeper) startBroker(broker ConnectionBroker) &#123;  
@@ -1860,6 +1999,310 @@ func main() &#123;
 <p>如有必要，多个 <code>sync.Cond</code> 可以共享一个 <code>sync.Locker</code>。</p>
 </blockquote>
 <h3><span id="原子操作-atomic">原子操作 Atomic</span></h3><p>原子操作是比其它同步技术更基础的操作。原子操作是无锁的，常常直接通过CPU指令直接实现。</p>
+<p><code>Go</code>提供的原子操作都在 <code>sync/atomic</code> 包下，在 <code>Go1.18</code>引入泛型后，从 <code>Go1.19</code> 开始引入了 <code>atomic.Pointer[T any]</code> 泛型类型和 <code>atomic.Bool</code>。基本的原子操作存在四类：</p>
+<ul>
+<li>读取 <code>Load</code></li>
+<li>写入 <code>Store</code></li>
+<li>修改 <code>Add</code></li>
+<li>交换 <code>Swap</code></li>
+<li>比较并交换 <code>CompareAndSwap</code></li>
+</ul>
+<pre><code class="language-go">n := int32(1)  
+atomic.AddInt32(&amp;n, 1)  
+  
+// go1.19  
+n1 := atomic.Int32&#123;&#125;  
+n1.Add(1)
+</code></pre>
+<h3><span id="gmp模型"><code>GMP</code>模型</span></h3><p>协程相较于线程，完全处于用户态的上下文切换对比线程切换需要陷入内核态更加轻量，同时协程所需要的内存占用更小。但是通常来说，协程的<code>CPU</code>调度是抢占式的，协程由用户态调度是协作式的。</p>
+<p><code>go</code> 中的 <code>goroutine</code> 创建简单（只需要通过 <code>go</code> 关键字），占用小，调度由 <code>runtime</code>完成，其协程调度器主要有 <strong>G（协程）</strong>、<strong>M（系统线程）</strong>、<strong>P（逻辑处理器）</strong> 三部分组成。</p>
+<p>协程的调度仍让依附于线程，即协程执行所需要的时间片来自于线程，这部分仍由操作系统调度。那如何优化协程的时间片利用便是关键：</p>
+<ul>
+<li><code>1:N</code>：所有协程都分配到一个内核线程，这样仅仅剩协程间的切换，但是无法利用现代 <code>CPU</code> 多核性能。</li>
+<li><code>N:N</code>：一个线程对应一个协程，协程独占线程时间片，也可以更好利用多核性能，但是线程本身的创建和切换成本高，未能利用好协程优势。</li>
+<li><code>M:N</code>：多个线程对应多个协程，每一个线程都会对应若干个协程，由处理器 <code>P</code> 来负责调度协程 <code>G</code> 如何使用线程的时间片。</li>
+</ul>
+<p><code>goroutine</code> 的协程生命周期如下：<br> <img src="goroutine_1.png" alt="goroutine_1"></p>
+<blockquote>
+<p><code>_Gcopystack</code> 是写正常扩张时具有的状态</p>
+</blockquote>
+<p><code>Go</code> 的协程时典型的有栈协程，每一个协程都会在堆上分配独立的栈空间，并且它会随着使用量的变化而增长或者缩小。</p>
+<ul>
+<li><p>新建协程时，<code>runtime.stackalloc</code>默认会为其分配 <code>2KB</code> 的栈空间大小。特殊情况下会根据栈内存分别从 <code>stackpool</code>和本地的线程缓存中获取。</p>
+</li>
+<li><p>如果不够则需要扩容，编译器会在函数开头插入 <code>runtime.morestack</code> 函数来检查当前协程释放需要进行栈扩容</p>
+</li>
+<li><p>需要则会通过 <code>runtime.newstack</code> 来完成真正的扩容操作，并由 <code>runtime.copystack</code>来完成栈拷贝的工作，拷贝前<code>G</code> 的状态由 <code>_Grunning</code> 切换为 <code>_Gcopystack</code>，完成后由 <code>_Gcopystack</code> 切换为 <code>_Grunning</code>。详细拷贝的过程可分为：</p>
+<ul>
+<li>分配新的栈空间</li>
+<li>将就栈内存通过 <code>runtime.memmove</code> 直接复制到新的栈空间</li>
+<li>调整栈指针结构，比如 <code>defer</code>、<code>panic</code></li>
+<li>更新<code>G</code> 的栈空间字段</li>
+<li>通过 <code>runtime.adjustframe</code> 调整执行旧栈内存的指针</li>
+<li>释放旧栈的内存</li>
+</ul>
+</li>
+<li><p>当 <code>G</code> 的状态为 <code>_Grunable</code> 、<code>_Gsyscall</code>、<code>_Gwating</code>时，<code>GC</code> 会扫描协程栈的内存空间，并由 <code>runtime.shrinkstack</code> 来完成真正的缩容操作。</p>
+</li>
+</ul>
+<blockquote>
+<p><code>runtime.morestack</code> 几乎会在所有函数的开头都被插入，所以栈扩容检查的时机也是一个协程抢占点。</p>
+</blockquote>
+<p>远古时期的栈扩容采用分段栈试下，不进行内存拷贝而是申请一片新的栈空间再通过指针链接，形成栈链表。好处时不需要拷贝原有的栈，但是会十分频繁地触发栈扩容和缩容。后续 <code>go1.4</code> 改成了连续栈，连续栈分配了更大地栈空间，不会因为内存达到临界值而频繁触发扩容和缩容，并且由于内存地址是连续的，格局缓存的局部性原理，连续栈对 <code>CPU</code> 缓存也更加友好。</p>
+<p><code>GMP</code> 模型如下：</p>
+<p><img src="gmp_dispatch.png" alt="gmp_dispatch"></p>
+<ul>
+<li><strong>全局队列</strong>：存放等待运行的 <code>G</code>。</li>
+<li><strong>P的本地队列</strong>：存放等待运行的 <code>G</code>，但是存放数量有限，不超过 256个。新建 <code>G</code> 会优先加入 <code>P</code>  的本地队列，如果队列满了，则会一定本地队列一半的 <code>G</code> 到全局队列。</li>
+<li><strong>P列表</strong>：所有的 <code>P</code> 都由运行时创建，可由 <code>GOMAXPROCS</code> 函数设置。</li>
+<li><strong>M队列</strong>：线程运行任务需要获取<code>P</code>，从 <code>P</code> 的本地队列中获取 <code>G</code> ，当 <code>P</code> 队列为空时，<code>M</code>  也会尝试从全局队列获取一批 <code>G</code> 到本地队列执行，或者从其他 <code>P</code> 的本地队列偷一半到自己的本地队列。</li>
+</ul>
+<blockquote>
+<p><code>Go</code> 的协程调度器和 <code>OS</code> 调度是通过 <code>M</code> 结合的，每个 <code>M</code> 都代表了一个内核线程，<code>OS</code>调度去负责把内核线程分配到 <code>CPU</code> 上执行。</p>
+</blockquote>
+<p>协程调度器的设计策略：</p>
+<ul>
+<li><p><strong>复用线程</strong>：复用线程，避免频繁创建、销毁线程</p>
+<ul>
+<li><code>work stealing</code>机制：本线程无可运行的 <code>G</code> 时尝试从其他线程绑定的 <code>P</code>偷取 <code>G</code>执行，而非销毁线程</li>
+<li><code>hand off</code>机制：本线程因为 <code>G</code> 进行系统调用阻塞时，会释放绑定的 <code>P</code>转移给其他空闲的线程执行</li>
+</ul>
+</li>
+<li><p><strong>利用并行</strong></p>
+</li>
+<li><p><strong>抢占调度</strong>：对比<code>coroutine</code>要等待协程主动让出 <code>CPU</code> ，<code>groutine</code>最多占据<code>CPU</code> 一个时间片<code>10ms</code>以防止其他 <code>goroutine</code> 饿死</p>
+</li>
+<li><p>全局<code>G</code>队列：全局队列一如存在，当本地队列为空优先从全局队列获取，全局队列也为空则执行 <code>work stealing</code>。</p>
+</li>
+</ul>
+<p>启动 <code>goroutine</code> 的 <code>go func()</code>调度流程如下：</p>
+<p><img src="go_func.jpeg" alt="go_func"></p>
+<p>调度器的生命周期如下：</p>
+<p><img src="goroutine_dispatch.png" alt="goroutine_dispatch"></p>
+<p>其中存在特殊的 <code>M0</code>和 <code>G0</code>：</p>
+<ul>
+<li><code>M0</code>：<code>M0</code>是启动程序后的编号为0的主线程，这个<code>M</code>对应的实例会在全局变量<code>runtime.m0</code>中，不需要在<code>heap</code>上分配，<code>M0</code>负责执行初始化操作和启动第一个<code>G</code>， 在之后<code>M0</code>就和其他的<code>M</code>一样了。</li>
+<li><code>G0</code>：<code>G0</code>是每次启动一个<code>M</code>都会第一个创建的<code>goroutine</code>，<code>G0</code>仅用于负责调度的<code>G</code>，<code>G0</code>不指向任何可执行的函数, 每个<code>M</code>都会有一个自己的<code>G0</code>。在调度或系统调用时会使用<code>G0</code>的栈空间, 全局变量的<code>G0</code>是<code>M0</code>的<code>G0</code>。</li>
+</ul>
+<h2><span id="内存模型和gc">内存模型和GC</span></h2><p>操作系统在逻辑层面将进程数据分为五个部分：</p>
+<ul>
+<li>代码段（<code>Text Segment</code>）：通常存放程序代码，运行前已经确定，通常属于只读部分。</li>
+<li>数据段（<code>Data Segment</code>）：存储已初始化的全局变量和静态变量。其在程序加载时被初始化，可读写。</li>
+<li>堆（<code>Heap</code>）：用于动态内存分配，大小不固定。</li>
+<li>栈（<code>Stack</code>）：存储函数局部变量、参数等。通常在编译时已经确定大小。</li>
+<li>未使用段（<code>BSS Segment</code>）：用于存储程序中未初始化的全局变量和静态变量。</li>
+</ul>
+<p>对于参与内存管理的的角色一般为：<strong>用户程序（<code>Mutator</code>）、内存分配器（<code>Allocator</code>）、垃圾回收（<code>Collector</code>）</strong>。</p>
+<p>编程语言一般包含两种内存分配器：<strong>线性分配器（<code>Sequential Allocator</code>）、空闲链表分配器（<code>Free-List Allocator</code>）</strong>。</p>
+<ul>
+<li>线性分配器：申请顺序从前往后分配堆内存。只需要维护一个执行内存当前分配位置的指针，用户申请内存时检查剩余空间并在返回分配内存区域后修改指针指向。</li>
+</ul>
+<p><img src="seqiemtial_allocator.png" alt="seqiemtial_allocator"></p>
+<p>其简单但是分配的内存无法回收，并发场景下需要加锁影响性能，同时因为其是线性扩张需要屏藩整理内存。</p>
+<ul>
+<li>空闲链表分配器：维护空闲内存块链表，分配时通过策略找到合适的内存块</li>
+</ul>
+<p>使用更为广泛，其内存分配策略有：</p>
+<ul>
+<li>首次适应：链表头开始遍历，找到第一个大于申请内存的内存块，容易造成零散小内存。</li>
+<li>循环首次适应：从上次遍历结束位置开始遍历，找到第一个大于申请内存的内存块。</li>
+<li>最优适应：从链表头遍历整个链表，选择最合适的内存块。</li>
+</ul>
+<p>同时为了优化效率，还可以使用 <strong>隔离适应策略</strong>：将内存分割为多个链表，称之为分箱(<code>bins</code>)，每个分箱的内存块大小相同，申请内存时先找到满足条件的分箱，再从分箱中找到空闲内存块。</p>
+<h3><span id="内存管理">内存管理</span></h3><p>在内存管理部分，<code>Go</code> 基于 <strong>TCMalloc</strong> 核心思想实现。</p>
+<p><code>TCMalloc</code>的核心思想时将内存分为多个级别来缩小锁的粒度。内存管理部分分为两个部分：<strong>线程内存</strong> 和 <strong>页堆</strong>。</p>
+<ul>
+<li>线程内存：每一个内存页都被分为多个固定分配大小规格的空闲列表，用于减少碎片化。这也每一个线程都可以获得一个用于无锁分配小对象的缓冲，可以让并行程序分配小对象（<code>&lt;=32KB</code>）更加高效。</li>
+</ul>
+<p><img src="tc_malloc.png" alt="tc-malloc"></p>
+<ul>
+<li>页堆（<code>Page Heap</code>）：<code>TCMalloc</code> 管理的堆由一组页组成，一组连续的页面被表示为 <code>span</code>。当分配的对象大于 <code>32KB</code> ，将使用 页堆 进行内存分配。当没有足够的空间分配小对象则会到页堆获取内存。如果页堆页没有足够的内存，则页堆会向操作系统申请更多的内存。</li>
+</ul>
+<p><img src="page_heap.png" alt="page_heap"></p>
+<blockquote>
+<p><code>Go</code> 的内存分配器最初是基于 <code>TCMalloc</code>但是现在已经有很大不同。</p>
+</blockquote>
+<p><code>Go</code> 运行时调度器会在调度时会将 <strong>Goroutines(G)</strong> 绑定到 <strong>逻辑处理器(P，Logical Processors)</strong> 运行。<code>Go</code> 实现的 <code>TCMalloc</code> 将内存分为 68 种不同规格的块：</p>
+<pre><code class="language-go">// sizeclasses.go
+
+const (
+    _NumSizeClasses = 68
+)
+
+var class_to_size = [_NumSizeClasses]uint16&#123;
+    0, 8, 16, 24, 32, 48, 64, 80, 96, 112, 128, 144,
+    160, 176, 192, 208, 224, 240, 256, 288, 320, 352,
+    384, 416, 448, 480, 512, 576, 640, 704, 768, 896,
+    1024, 1152, 1280, 1408, 1536, 1792, 2048, 2304, 2688,
+    3072, 3200, 3456, 4096, 4864, 5376, 6144, 6528, 6784,
+    6912, 8192, 9472, 9728, 10240, 10880, 12288, 13568,
+    14336, 16384, 18432, 19072, 20480, 21760, 24576, 27264, 28672, 32768,
+&#125;
+</code></pre>
+<p><code>Go</code> 通过 <code>mspan</code> 结构体进行管理。其可以简单视为一个包含 页起始地址，页<code>span</code>规格，页数量的双端链表。</p>
+<p><img src="mspan.png" alt="mspan"></p>
+<p><code>Go</code>为每一个逻辑处理器（<code>P，Logical Processors</code>） 提供一个本地线程缓存（<code>local thred cache</code>）称为 <strong>mcache</strong>。所以如果 <code>goroutine</code> 需要内存可以直接从 <code>mcache</code> 获取，由于同一时间运行在只会有一个 <code>goroutine</code> 和 <code>P</code> 绑定，所以中间不需要加锁。</p>
+<p><img src="mcache.png" alt="mcache"></p>
+<blockquote>
+<p>每个<code>mcache</code>包含所有大小规格的<code>mspan</code>作为缓存，每个 <code>P</code> 都拥有自己的 <code>mcache</code>，所以从<code>mcacahe</code> 分配内存无序持有锁。</p>
+</blockquote>
+<p>对于每一种大小规格，都有两种类型：</p>
+<ul>
+<li><strong>scan</strong>：包含指针的对象。</li>
+<li><strong>noscan</strong>：不包含指针的对象。</li>
+</ul>
+<p>这样可以使得进行 <code>GC</code> 时回收 <code>noscan</code> 对象无须进一步扫描释放引用其他活跃对象。通过 <code>mcache</code> 在分配小对象（<code>&lt;=32KB</code>）时可以直接通过 <code>mcache</code>分配。</p>
+<p>当 <code>mcache</code>没有可用空间，会从 <strong>mcentral</strong> 的 <code>mspans</code> 列表获取一个新的所需大小规格的 <code>mspan</code>。 <code>mcentral</code> 对象手机所有给定规格大小的 <code>span</code>，每个 <code>mcentral</code> 都包含两个 <code>mspan</code> 列表：</p>
+<ul>
+<li><code>empty mspan list</code>：没有空闲对象或者 <code>span</code> 已经被 <code>mcache</code> 缓存的 <code>span</code> 列表。</li>
+<li><code>nonempty mspan list</code>：有空闲对象的 <code>mspan</code> 列表。</li>
+</ul>
+<p>所有的 <code>mcentral</code> 都维护在 <code>mheap</code> 结构体内。<code>Go</code> 使用 <code>mheap</code> 对象管理内存，只有一个全局变量，持有虚拟地址空间。</p>
+<p><img src="mheap.png" alt="mheap"></p>
+<blockquote>
+<p><strong>mheap 存储了 mcentral 的数组</strong>。<strong>这个数组包含了各个的 span 的 mcentral</strong>。由于我们有各个规格的 <code>span</code> 的 <code>mcentral</code>，当一个 <strong>mcache</strong> 从 <code>mcentral</code> 申请 <strong>mspan</strong> 时，只需要在独立的 <strong>mcentral</strong> 级别中使用锁，所以其它任何 <strong>mcache</strong> 在同一时间申请不同大小规格的 <strong>mspan</strong> 将互不受影响可以正常申请。</p>
+</blockquote>
+<p>对于 <code>Go</code> 中对象分配流程：</p>
+<ol>
+<li>大于 <code>32KB</code>的大对象直接从 <code>mheap</code> 分配</li>
+<li>小于 <code>16B</code> 的使用 <code>mcache</code> 的微型分配器分配</li>
+<li>其余的先通过计算使用的大小规格，然后使用 <code>mcache</code> 中对应大小规格的块分配</li>
+<li>如果对应的大小规格在 <code>mcache</code> 中没有可用的块，向 <code>mcentral</code> 申请</li>
+<li>如果 <code>mcentral</code> 也没有可用的块，则向 <code>mheap</code> 申请，并根据 <code>bestFit</code> 算法找到最适合的 <code>mspan</code>，如果申请的 <code>mspan</code> 超出申请大小，会根据需求进行切分，以返回用户需要的页数。剩余的页会构成一个新的 <code>mspan</code> 返回 <code>mheap</code> 的空闲列表。</li>
+<li>如果 <code>mheap</code> 没有可用 <code>span</code> 则向操作系统申请一系列新的页（最小 1MB）。</li>
+</ol>
+<h3><span id="逃逸分析">逃逸分析</span></h3><p><code>Go</code>语言存在 <code>GC</code>，故而不需要自己维护内存。对于一个变量的，编译器会自动决定把一个变量放在栈还是放在堆，<strong>编译器会做逃逸分析(<code>escape analysis</code>)，当发现变量作用域没有跑出函数范围，就可以在栈上，反之则必须分配在堆</strong>。</p>
+<p>故而这样的代码在 <code>Go</code>合法而 <code>C/C++</code> 不合法：</p>
+<pre><code class="language-go">package main
+
+// go:noinline 表示禁止编译器内联
+//go:noinline
+func test() *int &#123;
+    var res1, res2, res3, res4, res5, res6 int
+    res1 = 1  
+    res2 = 2
+    res3 = 3
+    res4 = 4
+    res5 = 5
+    res6 = 6
+
+	// 如果不禁止内联 test 会被内联到 main 中
+	// 即使 res3 逃逸到堆上 内存依然会是连续的
+    println(&amp;res1, &amp;res2, &amp;res3, &amp;res4, &amp;res5, &amp;res6)
+
+    return &amp;res3
+&#125;
+
+func main() &#123;
+    mainVal := test()
+    println(*mainVal, mainVal)
+&#125;
+
+// output
+// 0xc000063f08 0xc000063f00 0xc00000a048 0xc000063ef8 0xc000063ef0 0xc000063ee8
+// 3 0xc00000a048
+</code></pre>
+<p>可以使用 <code>go tool compile -m main.go</code> 查看测试（或者通过 <code>go build -gcflags</code>）：</p>
+<pre><code class="language-bash"># 禁止内联
+⮞  go tool compile -m main.go
+main.go:19:6: can inline main
+main.go:6:18: moved to heap: res3
+
+# 不禁止内联
+⮞  go tool compile -m main.go
+main.go:3:6: can inline test
+main.go:17:6: can inline main
+main.go:18:17: inlining call to test
+main.go:4:18: moved to heap: res3
+</code></pre>
+<p>普遍来说，变量需要使用堆空间，那么他就应该进行逃逸。但是实际上还有很多逃逸现象，比如<strong>给一个引用类对象成员进行赋值</strong>，就大概率会出现逃逸（一般来说：<strong>函数外部没有引用，优先放到栈中，函数外部存在引用，必定放到堆中</strong>）。</p>
+<blockquote>
+<p>其他的一些内存逃逸的情况：<strong>动态类型赋值、大对象分配、闭包引用</strong>。</p>
+</blockquote>
+<h3><span id="gc-算法">GC 算法</span></h3><p>栈内存主要用于存储局部遍历和函数调用栈信息，当函数调用结束，栈帧自动出战，其中的局部变量也随之自动被销毁，栈中变量生命周期明确，栈内存自动管理，不需要 <code>GC</code> 介入。</p>
+<p>堆内存时程序运行时动态分配的，堆内存上的对象生命周期通常跨函数调用或者被多个部分共享和引用。因此 <code>GC</code> 算法主要用于自动管理堆内存的对象生命周期。</p>
+<p>对于 <code>GC</code> 中如何识别可回收对象部分有几种常用解法：</p>
+<ul>
+<li><strong>引用计数（Reference Counting）</strong>。即所有对象存在相应的引用计数器记录其被引用状态，最后引用计数归零时即成为可回收对象。<ul>
+<li>缺点：循环引用问题</li>
+<li>解决方案：使用类似标记清除法处理循环引用，或者借助 <code>Tracing GC</code>。</li>
+</ul>
+</li>
+<li><strong>Tracing GC</strong>。 将程序内存分为 <code>GC root</code> 和 <code>GC heap</code> 两部，从 <code>root set</code> 集合作为起点进行图遍历，找到可达对象，回收不可达对象。</li>
+</ul>
+<p> 基于 <code>Tracing GC</code> 常见 <code>GC</code> 算法有：</p>
+<ul>
+<li><p><strong>标记清除（Mark-Sweep）</strong>：标记所有需要回收的对象，在标记完成后统一回收所有被标记对象。缺点：容易产生内存碎片问题，导致大对象无法分配。</p>
+</li>
+<li><p><strong>复制算法（Coping）</strong>：将可用内存按容量划分为大小相等的两块，每次只使用其中其中的一块，当这一块内存用完了就将还存活的对象复制到另一块，再把已使用的内存空间一次清理。缺点：可用内存减少，经常搬运长生命周期对象影响效率。</p>
+</li>
+<li><p><strong>标记整理（Mark-Compact）</strong>：类似标记清除，但是不止直接堆可回收对象进行清理，而是让所有存活对象向一端移动，然后清理掉边界以外的内存。</p>
+</li>
+<li><p><strong>分代清理（Generational Collection）</strong>：分代的基本假设：绝大部分对象生命周期都非常短暂，存活时间短。等待算法将堆内存分为新生代和老生代，针对不同年代特定使用不同的收集算法。</p>
+</li>
+</ul>
+<p><code>Go V1.3</code> 之前使用<strong>标记清除</strong>。在执行的过程中，为了保证 <code>GC</code> 的正确性，会需要程序暂停，也就是<code>STW</code>。期间，<code>CPU</code> 不执行用户代码全部用于垃圾回收。所以就会导致程序卡顿。</p>
+<p>一个可行的简单优化就是，在清除阶段不再 <code>STW</code> 从而缩短 <code>STW</code>时间减少程序卡顿时长，但是 <code>STW</code> 仍然无可避免。</p>
+<p><img src="stw.png" alt="stw"></p>
+<p><code>Go V1.5</code> 时堆此进行优化，从单纯的 <strong>标记清除</strong> 改为了 <strong>三色标记法</strong> 来缺点需要清除的对象是哪些。</p>
+<p>三色标记法将所有对象分为三类：</p>
+<ul>
+<li>黑色节点：已经扫描过，并且所有子节点都扫描完了。</li>
+<li>灰色节点：已经扫描完，但是子节点未全部扫描完。</li>
+<li>白色节点：未扫描。</li>
+</ul>
+<p>根据 <code>Go</code> 的内存管理模型， <code>GC</code> 扫描从 <strong>根对象（全局数据和协程栈的指针）</strong> 开始，先将根对象放入待扫描队列（灰色），再按照<strong>广度优先</strong>遍历的顺序扫描他们的子节点，将扫描到的子节点加入队列，并将当前节点移除队列，直到待扫描队列为空（即 <strong>不存在灰色对象</strong>），此时剩余的白色对象即为可回收对象。</p>
+<blockquote>
+<p>执行扫描的协程为 <code>GC Mark Worker</code>，每个<code>P</code> 都会有一个 <code>GC Mark Worker</code>，<code>P</code>数量由 <code>GOMAXPROCS</code>控制，故程序开始时会启动 <code>GOMAXPROCS</code> 个 <code>GC Mark Worker</code>。通过 <code>runtime.MAXPROCS()</code> 动态调整时会发生 <code>STW</code> 。</p>
+</blockquote>
+<p>因为这期间可能存在很多并发流程被扫描，执行并发流程的内存可能相互依赖，为了保证数据安全，如果在三色标记开始前加上 <code>STW</code> 等最后确定黑白对象之后在放开，这样扫描的效率仍然比较低。</p>
+<p>但是如果不使用 <code>STW</code>，可能会导致程序并行的过程，<strong>白色对象被挂在在黑色对象的下游同时其上游不存在其他的灰色对象</strong>，这样就就导致该白色对象无法被扫描到而被当成垃圾回收。因此，如果要减少三色标记的效率，减少 <code>STW</code>就需要破坏这两个条件：</p>
+<ul>
+<li>白色对象被黑色对象引用。</li>
+<li>灰色对象和与其由可达关系的白色对象之间的引用被破坏。</li>
+</ul>
+<p>不让这两个条件同时成立，就可以避免存在之前提到的情况发生。即 <strong>强弱三色不变式</strong>。</p>
+<ul>
+<li><strong>强三色不变式</strong>：不存在黑色对象引用到白色对象的指针，即不允许黑色对于引用白色对象。</li>
+<li><strong>弱三色不变式</strong>：所有黑色对象引用的白色对象都处于灰色保护状态，即黑色对象对白色对象引用的同时，必须保证白色对象其可达链路上游存在灰色对象。</li>
+</ul>
+<p>基于此引入了 <strong>屏障机制</strong> ：</p>
+<ul>
+<li><strong>插入屏障</strong>：在A对象引用B对象的时候，B对象被标记为灰色（<strong>仅在堆内存使用</strong>）。</li>
+<li><strong>删除屏障</strong>：被删除的对象，如果自身为灰色或者白色，那么被标记为灰色。</li>
+</ul>
+<p>屏障机制破坏了强弱三色不变式，但是也存在一定短板：</p>
+<ul>
+<li>插入写屏障：结束时需要 <code>STW</code> 重新扫描栈，标记栈引用的白色对象的存活</li>
+<li>删除写屏障：回收精度低，<code>GC</code> 开始时需要 <code>STW</code> 扫描栈来记录初始快照</li>
+</ul>
+<p>因此在 <code>Go V1.8</code> 引入了<strong>混合写屏障</strong>机制，避免了对栈的部分的快照扫描过程，减少了 <code>STW</code> 的时间。具体的操作为：</p>
+<ul>
+<li><code>GC</code>开始时将栈上对象全部扫描并标记为黑色，后续不再二次重复扫描，无需 <code>STW</code>。</li>
+<li><code>GC</code> 期间任何在栈上创建的对象均为黑色</li>
+<li>被删除的对象标记为灰色</li>
+</ul>
+<blockquote>
+<p>屏障技术不应用与栈，因为要保证栈的效率</p>
+</blockquote>
+<p>到目前版本，除开后台的 <code>GC</code> 协程，为了避免内存分配过快时 <code>GC Mark Worker</code> 可能不能及时标记内存，导致内存不能即使回收而无限增长或者长时间 <code>STW</code>，还引入了 <strong>协助标记</strong> 机制。简单来说，即让用户协程在分配内存时也领取一部分标记任务。具体有三个机制：</p>
+<ul>
+<li><p><strong>信用（Credit）系统</strong>：</p>
+<ol>
+<li>每个协程维护一个 <code>GC</code> 信用值，表示其需要协助完成的标记工作量</li>
+<li><strong>分配内存时扣除信用值</strong>：按分配内存比例减少，分配越多减少的越多</li>
+<li><strong>信用耗尽时触发协助</strong>：信用值低于0协程必须执行标记任务来偿还再无，直到信用值恢复为正</li>
+</ol>
+</li>
+<li><p><strong>标记工作量计算</strong>：协程协助的标记工作量和其分配的内存成正比</p>
+</li>
+<li><p><strong>和后台GC写作</strong>：</p>
+<ul>
+<li>用户协程协助标记时，会从全局或本地的标记队列中获取对象进行扫描，标记存活对象直到完成自身需承担的标记量</li>
+<li>后台<code>GC</code> 协程（如 <code>hcBgMarkWorker</code>）同时运行，处理全局标记</li>
+</ul>
+</li>
+</ul>
 
     </div>
     
